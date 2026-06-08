@@ -1,72 +1,74 @@
 # Impôts Reskin
 
-Extension Chrome (Manifest V3, Plasmo + TypeScript) qui restyle localement l'espace professionnel **cfspro.impots.gouv.fr**.
+Extension Chrome qui modernise visuellement l'espace professionnel **cfspro.impots.gouv.fr**, localement et sans collecte de données.
 
-- **Purement cosmétique** — aucune donnée n'est lue, capturée ou envoyée.
-- **Local** — tout se passe dans le navigateur, aucune communication réseau.
-- **Réversible** — un toggle via le popup de l'icône Chrome bascule entre design moderne et design d'origine. Quand OFF, l'extension ne laisse **aucune trace** dans le DOM.
+---
 
-> Le design est **original**, inspiré d'une esthétique "administratif respirable". Il n'utilise PAS le DSFR (Système de Design de l'État), qui est réservé aux sites en `.gouv.fr` officiels.
+## Télécharger
 
-## Architecture
+[**Télécharger l'extension (.zip)**](https://github.com/meirankri/impot-redesign/raw/main/impots-reskin.zip)
 
-```
-impots-reskin/
-├── package.json              # deps Plasmo + override manifest
-├── popup.tsx                 # popup React (toggle ON/OFF)
-├── background.ts             # service worker minimal
-├── contents/
-│   └── cfspro-reskin.ts      # content script : injection, observer, bouton
-└── styles/
-    ├── cfspro-reskin.css     # design moderne, scopé sous html.ir-reskin-on
-    └── toggle.css            # bouton flottant
-```
+> Le `.zip` est régénéré automatiquement à chaque push sur `main` (via GitHub Actions) et contient directement le build prêt à l'emploi. Décompresse-le, le dossier obtenu est celui à charger dans Chrome.
 
-### Flux d'état
+---
 
-La source de vérité est `chrome.storage.local.reskinEnabled` (booléen, défaut `true`). Le popup et le content script s'y synchronisent via `chrome.storage.onChanged` — pas de message direct.
+## Ce que fait l'extension
 
-- **ON** : le content script ajoute `<style id="ir-reskin-style">` à `<head>`, la classe `ir-reskin-on` sur `<html>`, et le bouton flottant `#ir-toggle-btn` dans `<body>`. Un MutationObserver veille à ce que ces 3 éléments restent en place si le site re-render.
-- **OFF** : tout est retiré, l'observer est déconnecté. La page redevient strictement identique à l'originale.
+L'extension remplace l'interface de l'espace professionnel (cfspro.impots.gouv.fr) par un design moderne, **côté client uniquement** :
 
-## Installation (mode développeur)
+- **Une nouvelle UI** : bandeau bleu institutionnel, hero avec ton nom et SIREN, cartes blanches avec tuiles à icônes regroupées par section (Consulter / Déclarer / Payer / Mon espace / Messagerie).
+- **Les liens d'origine sont préservés** : chaque tuile relaie vers le vrai service du site (avec son `href` et son `onclick`), donc les sessions, formulaires et navigation continuent de fonctionner normalement.
+- **Tes informations sont lues depuis la page** (nom, identifiant abonné, SIREN, raison sociale) — jamais en dur dans le code.
+- **Un bouton flottant** en bas à droite permet de désactiver l'effet à tout moment.
+- **Toggle ON/OFF** persistant via l'icône de l'extension dans la barre Chrome : quand OFF, la page revient à 100% à son apparence d'origine, **aucun pixel ajouté**.
+
+### Ce qu'elle ne fait pas
+
+- Aucun appel réseau, aucune télémétrie.
+- Aucune donnée utilisateur (nom, SIREN, montants, etc.) n'est stockée ailleurs que dans la mémoire locale de l'onglet le temps de l'affichage.
+- N'agit que sur `https://cfspro.impots.gouv.fr/*` — aucun autre site n'est affecté.
+- N'utilise PAS le DSFR (Système de Design de l'État, réservé aux sites officiels `.gouv.fr`). Le design est original.
+
+---
+
+## Installer
+
+### 1. Télécharger et décompresser
+
+1. Clique sur le lien de téléchargement ci-dessus.
+2. Décompresse `impots-reskin.zip` quelque part de stable (ex. `~/Extensions/impots-reskin/`). **Ne supprime pas ce dossier** après installation : Chrome charge l'extension depuis cet emplacement.
+
+### 2. Charger dans Chrome (ou Edge)
+
+1. Ouvre `chrome://extensions` dans Chrome (ou `edge://extensions` dans Edge).
+2. Active **Mode développeur** (interrupteur en haut à droite).
+3. Clique **Charger l'extension non empaquetée**.
+4. Sélectionne le dossier décompressé (celui qui contient `manifest.json`).
+
+### 3. Utiliser
+
+1. Va sur https://cfspro.impots.gouv.fr/ et connecte-toi normalement.
+2. L'interface modernisée s'applique automatiquement.
+3. Pour désactiver : clique sur le bouton flottant en bas à droite, ou sur l'icône de l'extension dans la barre Chrome puis sur le toggle.
+4. Pour réactiver : clique sur l'icône de l'extension → toggle ON.
+
+---
+
+## Build depuis les sources
+
+Si tu veux modifier le code ou rebuilder toi-même :
 
 ```bash
 pnpm install
-pnpm dev
-```
-
-Puis dans Chrome :
-
-1. Ouvrir `chrome://extensions`
-2. Activer **Mode développeur** (coin haut droit)
-3. Cliquer **Charger l'extension non empaquetée**
-4. Sélectionner le dossier `build/chrome-mv3-dev`
-
-Naviguer sur https://cfspro.impots.gouv.fr/ — le reskin s'applique automatiquement.
-
-## Build de production
-
-```bash
 pnpm build
 ```
 
-Output : `build/chrome-mv3-prod`.
+Output : `build/chrome-mv3-prod/` — c'est ce dossier qu'il faut charger dans Chrome (étape 2 ci-dessus).
 
-## Vérifier que OFF = zéro trace
+Pour itérer en hot reload pendant le dev :
 
-1. Cliquer sur l'icône de l'extension → toggle OFF.
-2. Ouvrir DevTools → onglet Elements.
-3. Vérifier que :
-   - `<html>` n'a plus la classe `ir-reskin-on`
-   - Il n'y a plus de `<style id="ir-reskin-style">`
-   - Il n'y a plus de `#ir-toggle-btn`
+```bash
+pnpm dev
+```
 
-Aucun pixel n'est ajouté quand l'extension est désactivée.
-
-## Ce que l'extension ne fait PAS
-
-- Ne lit jamais le contenu utilisateur (SIREN, nom, montants, etc.).
-- Ne fait aucun appel réseau.
-- Ne touche que le scope strict `https://cfspro.impots.gouv.fr/*`.
-- Ne style PAS les conteneurs injectés par d'autres extensions (`browser-mcp-container`, `browserflow-container`, `#automa-palette`, etc.).
+Et charger `build/chrome-mv3-dev/` à la place.
