@@ -20,8 +20,14 @@ export const config: PlasmoCSConfig = {
 
 const STORAGE_KEY = "reskinEnabled"
 const STYLE_ID = "ir-reskin-style"
-const TOGGLE_BTN_ID = "ir-toggle-btn"
 const ROOT_CLASS = "ir-reskin-on"
+
+/* ------------------ Bannière de promo développeur ------------------------- */
+/* Mettre à `false` pour la désactiver complètement (ne s'affichera plus).    */
+const PROMO_ENABLED = true
+const PROMO_DISMISSED_KEY = "promoDismissed"
+const PROMO_ID = "ir-promo-banner"
+const PROMO_EMAIL = "meirankri@gmail.com"
 
 /* -------------------------------------------------------------------------- */
 /* État local                                                                 */
@@ -374,20 +380,66 @@ function renderHTML(menu: MenuSections, identity: UserIdentity): string {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Bouton flottant                                                            */
+/* Bannière de promo développeur                                              */
+/*                                                                            */
+/* Petite carte flottante en bas à gauche : si vous avez aimé ce que          */
+/* vous voyez, voici qui l'a fait. CTA email direct.                          */
+/* Désactivable globalement via PROMO_ENABLED, dismissible via la croix       */
+/* (persistance dans chrome.storage.local sous PROMO_DISMISSED_KEY).          */
 /* -------------------------------------------------------------------------- */
 
-function injectToggleButton(): void {
-  if (document.getElementById(TOGGLE_BTN_ID)) return
-  const btn = document.createElement("button")
-  btn.id = TOGGLE_BTN_ID
-  btn.type = "button"
-  btn.setAttribute("aria-label", "Désactiver le design moderne")
-  btn.textContent = "Design moderne ON"
-  btn.addEventListener("click", () => {
-    void chrome.storage.local.set({ [STORAGE_KEY]: false })
-  })
-  document.body.appendChild(btn)
+async function injectPromoBanner(): Promise<void> {
+  if (!PROMO_ENABLED) return
+  if (document.getElementById(PROMO_ID)) return
+
+  const stored = await chrome.storage.local.get(PROMO_DISMISSED_KEY)
+  if (stored[PROMO_DISMISSED_KEY] === true) return
+
+  const subject = encodeURIComponent("Automatisation IA pour mon entreprise")
+  const body = encodeURIComponent(
+    "Bonjour Meïr,\n\nJ'aimerais qu'on cale un rendez-vous pour discuter d'un projet d'automatisation IA.\n\n"
+  )
+  const mailto = `mailto:${PROMO_EMAIL}?subject=${subject}&body=${body}`
+
+  const wrap = document.createElement("div")
+  wrap.id = PROMO_ID
+  wrap.innerHTML = `
+    <button type="button" class="ir-promo-close" aria-label="Fermer ce message">&times;</button>
+    <div class="ir-promo-head">
+      <div class="ir-promo-avatar">M</div>
+      <div class="ir-promo-titles">
+        <div class="ir-promo-eyebrow">Tu aimes cette interface ?</div>
+        <div class="ir-promo-title">C'est moi qui l'ai faite. En 2 heures.</div>
+      </div>
+    </div>
+    <p class="ir-promo-body">
+      Je suis <b>Meïr Ankri</b>, développeur spécialisé en <b>automatisation IA</b>.
+      Je transforme les processus chronophages de votre entreprise en workflows automatiques —
+      facturation, support, génération de contenu, scraping, RAG sur vos documents&hellip;
+    </p>
+    <p class="ir-promo-pitch">
+      <b>Si vous perdez encore du temps sur des tâches répétitives</b>, on peut probablement
+      les automatiser. Échangeons 20 minutes pour voir.
+    </p>
+    <a class="ir-promo-cta" href="${mailto}">
+      <span>Discutons par email</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+        <path d="M5 12h14M13 5l7 7-7 7"/>
+      </svg>
+    </a>
+    <div class="ir-promo-foot">${escapeHTML(PROMO_EMAIL)}</div>
+  `
+
+  const closeBtn = wrap.querySelector<HTMLButtonElement>(".ir-promo-close")
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      wrap.classList.add("ir-promo-leaving")
+      window.setTimeout(() => wrap.remove(), 200)
+      void chrome.storage.local.set({ [PROMO_DISMISSED_KEY]: true })
+    })
+  }
+
+  document.body.appendChild(wrap)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -447,7 +499,7 @@ function applyReskin(): void {
     logoutBtn.addEventListener("click", activate(deconnexion))
   }
 
-  injectToggleButton()
+  void injectPromoBanner()
 }
 
 function removeReskin(): void {
@@ -460,7 +512,7 @@ function removeReskin(): void {
 
   document.documentElement.classList.remove(ROOT_CLASS)
   document.getElementById(STYLE_ID)?.remove()
-  document.getElementById(TOGGLE_BTN_ID)?.remove()
+  document.getElementById(PROMO_ID)?.remove()
 }
 
 /* -------------------------------------------------------------------------- */
@@ -738,39 +790,157 @@ html.ir-reskin-on .rd-footer {
   html.ir-reskin-on .rd-nav { overflow-x: auto; }
 }
 
-/* Bouton flottant pour désactiver à la volée */
-html.ir-reskin-on #ir-toggle-btn {
+/* ===== Bannière de promo développeur (bas gauche) ===== */
+html.ir-reskin-on #ir-promo-banner {
   position: fixed;
   bottom: 24px;
-  right: 24px;
-  z-index: 2147483647;
-  background: #000091;
-  color: #fff;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(0, 0, 145, .35);
-  font-family: 'Marianne', 'Segoe UI', system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 150ms ease, transform 150ms ease;
+  left: 24px;
+  z-index: 2147483646;
+  width: 340px;
+  max-width: calc(100vw - 48px);
+  padding: 18px 20px 16px;
+  background: #ffffff;
+  color: #161616;
+  border-radius: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .04), 0 12px 32px rgba(0, 0, 145, .18);
+  font-family: 'Marianne', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  border: 1px solid rgba(0, 0, 145, .08);
+  animation: ir-promo-in 320ms cubic-bezier(.16, 1, .3, 1);
+  transition: opacity 200ms ease, transform 200ms ease;
 }
-html.ir-reskin-on #ir-toggle-btn::before {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 8px;
+html.ir-reskin-on #ir-promo-banner.ir-promo-leaving {
+  opacity: 0;
+  transform: translateY(12px);
+}
+@keyframes ir-promo-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+html.ir-reskin-on #ir-promo-banner .ir-promo-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
-  background: #4ade80;
-  box-shadow: 0 0 0 2px rgba(74, 222, 128, .3);
+  background: transparent;
+  border: none;
+  color: #9095a8;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 120ms ease, color 120ms ease;
 }
-html.ir-reskin-on #ir-toggle-btn:hover {
+html.ir-reskin-on #ir-promo-banner .ir-promo-close:hover {
+  background: #f0f1f6;
+  color: #161616;
+}
+
+html.ir-reskin-on #ir-promo-banner .ir-promo-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-right: 24px;
+}
+html.ir-reskin-on #ir-promo-banner .ir-promo-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #000091, #2a2ad4);
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+html.ir-reskin-on #ir-promo-banner .ir-promo-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+html.ir-reskin-on #ir-promo-banner .ir-promo-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .8px;
+  color: #000091;
+}
+html.ir-reskin-on #ir-promo-banner .ir-promo-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #161616;
+  line-height: 1.25;
+}
+
+html.ir-reskin-on #ir-promo-banner .ir-promo-body,
+html.ir-reskin-on #ir-promo-banner .ir-promo-pitch {
+  margin: 0 0 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #3a3a3a;
+}
+html.ir-reskin-on #ir-promo-banner .ir-promo-body b,
+html.ir-reskin-on #ir-promo-banner .ir-promo-pitch b {
+  color: #161616;
+  font-weight: 600;
+}
+html.ir-reskin-on #ir-promo-banner .ir-promo-pitch {
+  background: #f5f6ff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 3px solid #000091;
+  margin-bottom: 14px;
+}
+
+html.ir-reskin-on #ir-promo-banner .ir-promo-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 14px;
+  background: #000091;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: .2px;
+  transition: background 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 145, .25);
+}
+html.ir-reskin-on #ir-promo-banner .ir-promo-cta:hover {
   background: #1212a3;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(0, 0, 145, .35);
+}
+html.ir-reskin-on #ir-promo-banner .ir-promo-cta:active {
+  transform: translateY(0);
+}
+
+html.ir-reskin-on #ir-promo-banner .ir-promo-foot {
+  text-align: center;
+  font-size: 11.5px;
+  color: #9095a8;
+  margin-top: 8px;
+  font-variant: tabular-nums;
+}
+
+@media (max-width: 600px) {
+  html.ir-reskin-on #ir-promo-banner {
+    left: 12px;
+    right: 12px;
+    bottom: 80px;
+    width: auto;
+  }
 }
 `
